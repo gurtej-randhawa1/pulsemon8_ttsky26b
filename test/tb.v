@@ -28,7 +28,7 @@ module tb ();
 `endif
 
   // Replace tt_um_example with your module name:
-  tt_um_vga_gurtej-randhawa1_Gurtej-Eshaan-Tapeout user_design (
+  tt_um_vga_gurtej_randhawa1_Gurtej_Eshaan_Tapeout user_project (
 
       // Include power ports for the Gate Level test:
 `ifdef GL_TEST
