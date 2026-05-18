@@ -35,7 +35,9 @@ async def send_pulse(dut, enable=1, freeze_on_match=0):
         enable=enable,
         freeze_on_match=freeze_on_match,
     )
-    await ClockCycles(dut.clk, 1)
+    await ClockCycles (dut.clk, 1)
+    # Allow gate-level outputs to settle after the clock edge.
+    await Timer(7, unit="ns")
     await ReadOnly()
     await Timer(1, unit="ns")
 
@@ -65,7 +67,7 @@ async def test_project(dut):
     dut._log.info(f"After reset: count={count}")
     assert count == 0
 
-    await Timer(1, unit="ns")
+    await Timer(3, unit="ns")
 
     # -------------------------------------------------------------------------
     # TEST 2: Counting and overflow behavior
@@ -110,6 +112,7 @@ async def test_project(dut):
     assert status["edge_detect"] == 1
 
     await ClockCycles(dut.clk, 1)
+    await Timer(5, unit = "ns")
     await ReadOnly()
     await Timer(1, unit="ns")
 
