@@ -105,14 +105,15 @@ async def test_project(dut):
 
     # Drive signal high and check edge_detect before prev_signal updates.
     dut.uio_in.value = make_uio(signal=1, enable=1)
-    await Timer(1, unit="ns")
+    await Timer(7, unit="ns")
+    await ReadOnly()
 
     status = read_status(dut)
     dut._log.info(f"During rising edge: edge_detect={status['edge_detect']}")
     assert status["edge_detect"] == 1
 
     await ClockCycles(dut.clk, 1)
-    await Timer(5, unit = "ns")
+    await Timer(7, unit = "ns")
     await ReadOnly()
     await Timer(1, unit="ns")
 
