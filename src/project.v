@@ -11,7 +11,7 @@ module tt_um_gurtej_randhawa1_pulsemon8(
   input  wire [7:0] uio_in,   // Bidirectional IO input path
   output wire [7:0] uio_out,  // Bidirectional IO output path
   output wire [7:0] uio_oe,   // Bidirectional IO output enable, active high
-  input  wire       ena,      // Design enable
+  input  wire       ena,      // always 1 when the design is powered, so you can ignore it
   input  wire       clk,      // Clock
   input  wire       rst_n     // Active-low reset
 );
@@ -90,8 +90,9 @@ module tt_um_gurtej_randhawa1_pulsemon8(
   assign uio_out[3]   = freeze_status;
   assign uio_out[7:4] = 4'b0000;
 
-  // uio[3:0] are outputs, so the input path for those pins is unused.
-  wire _unused_uio_inputs = &{uio_in[3:0], 1'b0};
+  // ena is always 1 in Tiny Tapeout, and uio[3:0] are configured as outputs,
+  // so these input paths are intentionally unused.
+  wire _unused = &{ena, uio_in[3:0], 1'b0};
 
 
 endmodule
