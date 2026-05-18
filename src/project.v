@@ -30,6 +30,7 @@ module tt_um_gurtej_randhawa1_pulsemon8(
   wire       clear           = uio_in[6];
   wire       freeze_on_match = uio_in[7];
 
+
   // ---------------------------------------------------------------------------
   // Internal state
   // ---------------------------------------------------------------------------
@@ -89,7 +90,8 @@ module tt_um_gurtej_randhawa1_pulsemon8(
   assign uio_out[3]   = freeze_status;
   assign uio_out[7:4] = 4'b0000;
 
-  // Mark ena as intentionally unused.
-  wire _unused = &{ena, 1'b0};
+  // uio[3:0] are outputs, so the input path for those pins is unused.
+  wire _unused_uio_inputs = &{uio_in[3:0], 1'b0};
+
 
 endmodule
