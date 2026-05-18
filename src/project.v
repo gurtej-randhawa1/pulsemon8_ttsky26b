@@ -1,98 +1,95 @@
 /*
- * Copyright (c) 2024 Renaldas Zioma
- * based on the VGA examples by Uri Shaked
+ * Copyright (c) 2026 Gurtejbir Randhawa
  * SPDX-License-Identifier: Apache-2.0
  */
 
 `default_nettype none
 
-module tt_um_vga_gurtej_randhawa1_Gurtej_Eshaan_Tapeout(
+module tt_um_gurtej_randhawa1_pulsemon8(
   input  wire [7:0] ui_in,    // Dedicated inputs
   output wire [7:0] uo_out,   // Dedicated outputs
-  input  wire [7:0] uio_in,   // IOs: Input path
-  output wire [7:0] uio_out,  // IOs: Output path
-  output wire [7:0] uio_oe,   // IOs: Enable path (active high: 0=input, 1=output)
-  input  wire       ena,      // always 1 when the design is powered, so you can ignore it
-  input  wire       clk,      // clock
-  input  wire       rst_n     // reset_n - low to reset
+  input  wire [7:0] uio_in,   // Bidirectional IO input path
+  output wire [7:0] uio_out,  // Bidirectional IO output path
+  output wire [7:0] uio_oe,   // Bidirectional IO output enable, active high
+  input  wire       ena,      // Design enable
+  input  wire       clk,      // Clock
+  input  wire       rst_n     // Active-low reset
 );
-  // increase couner every frame (vsync happens once per frame)
-  reg [9:0] counter;
-  always @(posedge vsync, negedge rst_n) begin
-    if (~rst_n) begin
-      counter <= 0;
+
+  // ---------------------------------------------------------------------------
+  // Pin mapping
+  // ---------------------------------------------------------------------------
+
+  // uio[3:0] are status outputs.
+  // uio[7:4] are user control inputs.
+  assign uio_oe = 8'b0000_1111;
+
+  wire [7:0] compare_value   = ui_in[7:0];
+  wire       signal          = uio_in[4];
+  wire       enable          = uio_in[5];
+  wire       clear           = uio_in[6];
+  wire       freeze_on_match = uio_in[7];
+
+  // ---------------------------------------------------------------------------
+  // Internal state
+  // ---------------------------------------------------------------------------
+
+  reg [7:0] count;
+  reg       prev_signal;
+  reg       overflow;
+  reg       freeze_status;
+
+  // ---------------------------------------------------------------------------
+  // Combinational status logic
+  // ---------------------------------------------------------------------------
+
+  wire edge_detect  = signal && !prev_signal;
+  wire match_status = (count == compare_value);
+
+  // ---------------------------------------------------------------------------
+  // Sequential counter/control logic
+  // ---------------------------------------------------------------------------
+
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      count         <= 8'b0;
+      prev_signal   <= 1'b0;
+      overflow      <= 1'b0;
+      freeze_status <= 1'b0;
     end else begin
-      counter <= counter - 2;
+      prev_signal <= signal;
+
+      if (clear) begin
+        count         <= 8'b0;
+        overflow      <= 1'b0;
+        freeze_status <= 1'b0;
+      end else if (!freeze_status && enable && edge_detect) begin
+        if (count == 8'hFF) begin
+          overflow <= 1'b1;
+        end
+
+        count <= count + 1'b1;
+
+        if (freeze_on_match && ((count + 1'b1) == compare_value)) begin
+          freeze_status <= 1'b1;
+        end
+      end
     end
-  end  
+  end
 
-  // animate layers
-  wire [9:0] layer_a_x = counter [6] ? (pix_x - counter*16) : (pix_x + counter*8);
-  wire [9:0] layer_a_y = pix_y + counter*2;
+  // ---------------------------------------------------------------------------
+  // Output assignments
+  // ---------------------------------------------------------------------------
 
-  wire [9:0] layer_b_x = pix_x + counter*7;
-  wire [9:0] layer_b_y = pix_y + counter + counter/2;
+  assign uo_out = count;
 
-  wire [9:0] layer_c_x = pix_x + counter*4;
-  wire [9:0] layer_c_y = pix_y + counter/2;
+  assign uio_out[0]   = edge_detect;
+  assign uio_out[1]   = overflow;
+  assign uio_out[2]   = match_status;
+  assign uio_out[3]   = freeze_status;
+  assign uio_out[7:4] = 4'b0000;
 
-  wire [9:0] layer_d_x = pix_x + counter*2;
-  wire [9:0] layer_d_y = pix_y + counter/4;
-
-  wire [9:0] layer_e_x = pix_x + counter/2;
-  wire [9:0] layer_e_y = pix_y + counter/6;
-
-  //                    checker shape          * transparency using pixel dithering
-  wire layer_a = (layer_a_x[8] ^ layer_a_y[8]) & ( pix_y[1] ^ pix_x[0]);
-  wire layer_b = (layer_b_x[7] ^ layer_b_y[7]) & (~pix_y[1] ^ pix_x[1]);
-  wire layer_c =  layer_c_x[6] ^ layer_c_y[6] ;
-  wire layer_d =  layer_d_x[5] ^ layer_d_y[6] ;
-  wire layer_e = (layer_e_x[4] ^ layer_e_y[4]) & ( pix_y[1] ^ pix_x[0]);
-
-  wire [5:0] color_a = ~ui_in[5:0]; // color of the closest layer
-  wire [5:0] color_b = color_a ^ 6'b0_10_1;
-  wire [5:0] color_c = color_b & 6'b10_10_10;
-  wire [5:0] color_de = color_c >> 1; // color of the two farthest layers
-                                      // the layer e also using dithering to darken the color
-
-  assign {R, G, B} =
-      video_active ?
-        (layer_a ? color_a :
-          (layer_b ? color_b : 
-            (layer_c ? color_c : 
-              (layer_d ? color_c :
-                (layer_e ? color_b : 6'b00_00_00))))) : 6'b00_00_00;
-
-  
-
-  // VGA signals
-  wire hsync;
-  wire vsync;
-  wire [1:0] R;
-  wire [1:0] G;
-  wire [1:0] B;
-  wire video_active;
-  wire [9:0] pix_x;
-  wire [9:0] pix_y;
-
-  // TinyVGA PMOD
-  assign uo_out = {hsync, B[0], G[0], R[0], vsync, B[1], G[1], R[1]};
-
-  // Unused outputs assigned to 0.
-  assign uio_out = 0;
-  assign uio_oe  = 0;
-
-  // Suppress unused signals warning
-  wire _unused_ok = &{ena, ui_in, uio_in};
-
-  hvsync_generator hvsync_gen(
-    .clk(clk),
-    .reset(~rst_n),
-    .hsync(hsync),
-    .vsync(vsync),
-    .display_on(video_active),
-    .hpos(pix_x),
-    .vpos(pix_y)
-  );
+  // Mark ena as intentionally unused.
+  wire _unused = &{ena, 1'b0};
 
 endmodule
