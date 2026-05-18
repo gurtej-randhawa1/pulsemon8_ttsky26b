@@ -124,6 +124,7 @@ async def test_project(dut):
 
     dut.uio_in.value = make_uio(clear=1)
     await ClockCycles(dut.clk, 1)
+    await Timer (7, unit="ns")
     await ReadOnly()
 
     count = int(dut.uo_out.value)
@@ -153,8 +154,13 @@ async def test_project(dut):
     for _ in range(compare_value):
         await send_pulse(dut, freeze_on_match=1)
 
+    await Timer (7, unit="ns")
+    await ReadOnly()
+
     count = int(dut.uo_out.value)
     status = read_status(dut)
+
+    await Timer (1, unit="ns")
 
     dut._log.info(
         "After freeze test: "
